@@ -1,3 +1,3 @@
 # json-rpc-java
 
-Note: use gradle
+https://github.com/arteam/simple-json-rpc/tree/master/server
