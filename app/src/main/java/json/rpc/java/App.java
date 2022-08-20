@@ -10,7 +10,7 @@ import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
 import com.hedera.hashgraph.sdk.AccountId;
 import com.hedera.hashgraph.sdk.Client;
 import com.hedera.hashgraph.sdk.PrivateKey;
-//import io.github.cdimascio.dotenv.Dotenv;
+import io.github.cdimascio.dotenv.Dotenv;
 
 
 @JsonRpcService
@@ -20,14 +20,12 @@ public class App {
         return "Hello World!";
     }
 	
-	@JsonRpcMethod
+	//@JsonRpcMethod
     public static void main(String[] args) {
         //System.out.println(new App().getGreeting());
         //Grab your Hedera testnet account ID and private key
-        //AccountId myAccountId = AccountId.fromString(Dotenv.load().get("MY_ACCOUNT_ID"));
-        //PrivateKey myPrivateKey = PrivateKey.fromString(Dotenv.load().get("MY_PRIVATE_KEY"));  
-		AccountId myAccountId = AccountId.fromString("0.0.47769083");
-		PrivateKey myPrivateKey = PrivateKey.fromString("302e020100300506032b657004220420ae09145d483b0e78cf2cb962856419b46903c7b4b018093521e7402df41b2e4c");
+        AccountId myAccountId = AccountId.fromString(Dotenv.load().get("MY_ACCOUNT_ID"));
+        PrivateKey myPrivateKey = PrivateKey.fromString(Dotenv.load().get("MY_PRIVATE_KEY"));  
     }
 	
 	@SuppressWarnings("serial")
