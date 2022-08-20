@@ -31,10 +31,10 @@ dependencies {
     implementation 'com.github.arteam:simple-json-rpc-server:1.2'
     
     // hedera dependencies
-   // implementation 'com.hedera.hashgraph:sdk:2.14.0'
-    implementation 'com.hedera.hashgraph:sdk-jdk7:2.17.0'
+   // implementation 'com.hedera.hashgraph:sdk:2.14.0' // use this one for java 9 +
+    implementation 'com.hedera.hashgraph:sdk-jdk7:2.17.0' // use this one for java 8
     implementation 'io.grpc:grpc-netty-shaded:1.40.0'
-    //compile 'io.github.cdimascio:java-dotenv:5.2.1' // Module that stores your environment variables from a .env file
+    //compile 'io.github.cdimascio:java-dotenv:5.2.1' // Module that stores your environment variables from a .env file. Doesn't run properly with java 8
     implementation 'io.github.cdimascio:java-dotenv:5.2.1' // Module that stores your environment variables from a .env file
     implementation 'org.slf4j:slf4j-nop:1.7.29'
     implementation 'com.google.code.gson:gson:2.8.8'
