@@ -26,8 +26,10 @@ import com.hedera.hashgraph.sdk.AccountBalance;
 import com.hedera.hashgraph.sdk.TransferTransaction;
 import io.github.cdimascio.dotenv.Dotenv;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -55,7 +57,46 @@ public class App {
 	@JsonRpcMethod
     public static void main(String[] args) throws TimeoutException, PrecheckStatusException, ReceiptStatusException {
     	listen(80);
-    /*    System.out.println(new App().getGreeting());
+    } 
+	
+	// connect to server on port 80
+	public static void listen(Integer port) {
+		try (ServerSocket serverSocket = new ServerSocket(port)) {
+			Socket connectionSocket = serverSocket.accept();
+			
+			// create input & output streams for the connection
+			InputStream inputToServer = connectionSocket.getInputStream();
+			OutputStream outputFromServer = connectionSocket.getOutputStream();
+			
+			BufferedReader br = new BufferedReader(new InputStreamReader(inputToServer));
+			
+			String request = br.readLine();
+			
+			System.out.println(request);
+			
+			//Scanner scanner = new Scanner(inputToServer, "UTF-8");
+			//PrintWriter serverPrintOut = new PrintWriter(new OutputStreamWriter(outputFromServer, "UTF-8"), true);
+			
+			//serverPrintOut.println("Enter Peace to exit.");
+			
+			// server takes input from client and echos it back
+			//boolean done = false;
+			
+			//while (!done && scanner.hasNextLine()) {
+				//String line = scanner.nextLine();
+				//serverPrintOut.println("Echo from your server: " + line);
+				
+				//if (line.toLowerCase().trim().equals("peace")) {
+					
+					//done = true;
+				//}
+			//}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void hederaTest() throws TimeoutException, PrecheckStatusException, ReceiptStatusException {  
         //Grab your Hedera testnet account ID and private key
         AccountId myAccountId = AccountId.fromString(Dotenv.load().get("MY_ACCOUNT_ID"));
         PrivateKey myPrivateKey = PrivateKey.fromString(Dotenv.load().get("MY_PRIVATE_KEY"));  
@@ -108,44 +149,15 @@ public class App {
                 .setAccountId(newAccountId)
                 .execute(client);
 
-        System.out.println("The new account balance is: " +accountBalanceNew.hbars); */
-    } 
-	
-	// connect to server on port 80
-	public static void listen(Integer port) {
-		try (ServerSocket serverSocket = new ServerSocket(port)) {
-			Socket connectionSocket = serverSocket.accept();
-			
-			// create input & output streams for the connection
-			InputStream inputToServer = connectionSocket.getInputStream();
-			OutputStream outputFromServer = connectionSocket.getOutputStream();
-			
-			Scanner scanner = new Scanner(inputToServer, "UTF-8");
-			PrintWriter serverPrintOut = new PrintWriter(new OutputStreamWriter(outputFromServer, "UTF-8"), true);
-			
-			serverPrintOut.println("Enter Peace to exit.");
-			
-			// server takes input from client and echos it back
-			boolean done = false;
-			
-			while (!done && scanner.hasNextLine()) {
-				String line = scanner.nextLine();
-				serverPrintOut.println("Echo from your server: " + line);
-				
-				if (line.toLowerCase().trim().equals("peace")) {
-					
-					done = true;
-				}
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+        System.out.println("The new account balance is: " +accountBalanceNew.hbars);
 	}
-
-
+	
+	
 	@SuppressWarnings("serial")
 	@JsonRpcError(code = -32032, message ="Generic error")
 	public class GenericException extends Exception {
 		
 	}
+	
+	
 }
