@@ -54,46 +54,44 @@ public class App {
         return "Hello World!";
     }
 	
-	@JsonRpcMethod
     public static void main(String[] args) throws TimeoutException, PrecheckStatusException, ReceiptStatusException {
+		System.out.println("-- JSON-RPC java server running --");
     	listen(80);
     } 
 	
-	// connect to server on port 80
 	public static void listen(Integer port) {
-		try (ServerSocket serverSocket = new ServerSocket(port)) {
-			Socket connectionSocket = serverSocket.accept();
-			
-			// create input & output streams for the connection
-			InputStream inputToServer = connectionSocket.getInputStream();
-			OutputStream outputFromServer = connectionSocket.getOutputStream();
-			
-			BufferedReader br = new BufferedReader(new InputStreamReader(inputToServer));
-			
-			String request = br.readLine();
-			
-			System.out.println(request);
-			
-			//Scanner scanner = new Scanner(inputToServer, "UTF-8");
-			//PrintWriter serverPrintOut = new PrintWriter(new OutputStreamWriter(outputFromServer, "UTF-8"), true);
-			
-			//serverPrintOut.println("Enter Peace to exit.");
-			
-			// server takes input from client and echos it back
-			//boolean done = false;
-			
-			//while (!done && scanner.hasNextLine()) {
-				//String line = scanner.nextLine();
-				//serverPrintOut.println("Echo from your server: " + line);
-				
-				//if (line.toLowerCase().trim().equals("peace")) {
-					
-					//done = true;
-				//}
-			//}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		try {
+		      ServerSocket ss = new ServerSocket(port);
+		      for (;;) {
+		        Socket client = ss.accept();
+		        BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+		        PrintWriter out = new PrintWriter(client.getOutputStream());
+		        
+		        // generic response
+		        out.print("HTTP/1.1 200 \r\n"); // Version & status code
+		        out.print("Content-Type: text/plain\r\n"); // The type of data
+		        out.print("Connection: close\r\n"); // Will close stream
+		        out.print("\r\n"); // End of headers
+
+		        String line;
+		        while ((line = in.readLine()) != null) {
+		          if (line.length() == 0)
+		            break;
+		          out.print(line + "\r\n");
+		          System.out.println("line: " + line);
+		        }
+
+		        // Close socket, breaking the connection to the client, and
+		        // closing the input and output streams
+		        out.close(); // Flush and close the output stream
+		        in.close(); // Close the input stream
+		        client.close(); // Close the socket itself
+		      } // Now loop again, waiting for the next connection
+		    }
+		    catch (Exception e) {
+		      System.err.println(e);
+		      System.err.println("Usage: java HttpMirror <port>");
+		    }
 	}
 
 	private static void hederaTest() throws TimeoutException, PrecheckStatusException, ReceiptStatusException {  
