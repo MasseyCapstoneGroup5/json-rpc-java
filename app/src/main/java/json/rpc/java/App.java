@@ -49,12 +49,16 @@ public class App {
 		        out.print("\r\n"); // End of headers
 
 		        String line;
+		        StringBuilder stringBuilder = new StringBuilder();
 		        while ((line = in.readLine()) != null) {
 		          if (line.length() == 0)
 		            break;
 		          out.print(line + "\r\n");
-		          System.out.println("line: " + line);
+		          stringBuilder.append(line);
 		        }
+		        
+		        String response = parseRequest(stringBuilder.toString());
+		        out.print(response);
 
 		        // Close socket, breaking the connection to the client, and
 		        // closing the input and output streams
@@ -71,12 +75,14 @@ public class App {
 	
 	
 	private static String parseRequest(String request) {
-		JSONObject obj = new JSONObject(request);
-		String method = obj.getString("method");
-		JSONObject args = obj.getJSONObject("params");
+		System.out.println("Request: ");
+		System.out.println(request);
+		//JSONObject obj = new JSONObject(request);
+		//String method = obj.getString("method");
+		//JSONObject args = obj.getJSONObject("params");
 		// implement some kind of mapping between the methods and the names? 
 		// names will also determine the expected parameters too
-		return null;
+		return "Request received: ";
 	}
 	
 	private static Object callFunction(Method method, Object args) { 
