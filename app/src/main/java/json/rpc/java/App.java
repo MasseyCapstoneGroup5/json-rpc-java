@@ -13,33 +13,46 @@ import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
 import com.hedera.hashgraph.sdk.PrecheckStatusException;
 import com.hedera.hashgraph.sdk.ReceiptStatusException;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.EOFException;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
+
 import org.json.*;
 
 @JsonRpcService
 public class App {
 	
-	public App() {
-
+	public App(Integer port) throws IOException {
+		System.out.println("-- JSON-RPC java server running --");
+		App.listen(port);
 	}
 
-    public static void main(String[] args) throws TimeoutException, PrecheckStatusException, ReceiptStatusException {
+    public static void main(String[] args) throws TimeoutException, PrecheckStatusException, ReceiptStatusException, IOException {
     	System.out.println("-- JSON-RPC java server running --");
     	listen(80);
     } 
 	
-	public static void listen(Integer port) {
+	public static void listen(Integer port) throws IOException {
+		ServerSocket ss = null;
 		try {
-		      ServerSocket ss = new ServerSocket(port);
+		      ss = new ServerSocket(port);
 		      for (;;) {
 		        Socket client = ss.accept();
 		        BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+		        //DataInputStream in = new DataInputStream(new BufferedInputStream(client.getInputStream()));
 		        PrintWriter out = new PrintWriter(client.getOutputStream());
 		        
 		        // generic response
@@ -47,48 +60,143 @@ public class App {
 		        out.print("Content-Type: text/plain\r\n"); // The type of data
 		        out.print("Connection: close\r\n"); // Will close stream
 		        out.print("\r\n"); // End of headers
-
-		        String line;
-		        StringBuilder stringBuilder = new StringBuilder();
-		        while ((line = in.readLine()) != null) {
-		          if (line.length() == 0)
-		            break;
-		          out.print(line + "\r\n");
-		          stringBuilder.append(line);
-		        }
 		        
-		        String response = parseRequest(stringBuilder.toString());
+		        String response = handle(in);
 		        out.print(response);
+		        
+		        // TODO: find a way to implement this properly
+		        // because of the way the API call is made there is no end of file declared for the body
+		        // so the input stream never closes, and if it tries to read more bytes than are there, it will 
+		        // continue listening for more data and not return a response 
+		        
+//		        int length = 0;
+//		        try {
+//		        	length = in.readInt();
+//		        } catch (EOFException e) {
+//		        	// TODO: implement error handling for end of file
+//		        }
+//		        System.out.println(length);
 
+//		        byte[] messageByte = new byte[length];
+//		        if (length > 0) {
+//		        	boolean end = false;
+//			        StringBuilder dataString = new StringBuilder(length);
+//			        int totalBytesRead = 0;
+//			        while (!end) {
+//			        	int currentBytesRead = in.read(messageByte);
+//			        	if (currentBytesRead == -1) {
+//			        		end = true;
+//			        		break;
+//			        	}
+//			            totalBytesRead = currentBytesRead + totalBytesRead;
+//			            System.out.println(totalBytesRead);
+//			            if(totalBytesRead <= length) {
+//			                dataString
+//			                  .append(new String(messageByte, 0, currentBytesRead, StandardCharsets.UTF_8));
+//			            } else {
+//			                dataString
+//			                  .append(new String(messageByte, 0, length - totalBytesRead + currentBytesRead, 
+//			                  StandardCharsets.UTF_8));
+//			            }
+//			            if(dataString.length()>=length) {
+//			                end = true;
+//			            }
+//			        }
+//		        }
+		        
 		        // Close socket, breaking the connection to the client, and
 		        // closing the input and output streams
 		        out.close(); // Flush and close the output stream
 		        in.close(); // Close the input stream
 		        client.close(); // Close the socket itself
+		        
 		      } // Now loop again, waiting for the next connection
 		    }
 		    catch (Exception e) {
 		      System.err.println(e);
 		      System.err.println("Usage: java HttpMirror <port>");
 		    }
+		if (ss != null) {
+			ss.close();
+		}
 	}
 	
-	
-	private static String parseRequest(String request) {
-		System.out.println("Request: ");
-		System.out.println(request);
-		//JSONObject obj = new JSONObject(request);
-		//String method = obj.getString("method");
-		//JSONObject args = obj.getJSONObject("params");
-		// implement some kind of mapping between the methods and the names? 
-		// names will also determine the expected parameters too
-		return "Request received: ";
+	private static String handle(BufferedReader in) {
+		String line;
+        ArrayList<String> string_headers = new ArrayList<String>();
+        StringBuilder response = new StringBuilder();
+        try {
+			while ((line = in.readLine()) != null) {
+			  if (line.length() == 0) {
+				  break;
+			  }
+			  string_headers.add(line);
+			}
+			
+			if (string_headers.size() > 0) {
+				StringBuilder str_body = new StringBuilder();
+				String body_line;
+				int read_bytes = 0;
+				int new_read_bytes = 0;
+				while ((body_line = in.readLine()) != null) {
+	        		new_read_bytes = read_bytes;
+	        		read_bytes = in.read();
+	        		if (read_bytes > new_read_bytes && new_read_bytes > 0) {
+	        			str_body.append(body_line);
+	        			str_body.append("}");
+	        			break;
+	        		}
+	        		str_body.append(body_line);
+	        	}
+				JSONObject body = parse(str_body.toString());
+				String method = body.getString("method");
+				Object params = body.get("params");
+				Object rep = callAccountFunction(method, params);
+			} else {
+				// TODO implement if no body, just headers (GET request)
+			}
+			
+		} catch (IOException e) {
+			return null;
+		} catch (IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        return response.toString();
 	}
 	
-	private static Object callFunction(Method method, Object args) { 
+	private static JSONObject parse(ArrayList<String> request) {
+		String[] parts;
+		JSONObject headers = new JSONObject();
+		for (String req: request) {
+			if (req.contains(": ")) {
+				parts = req.split(": ");
+				headers.put(parts[0], parts[1]);
+			}
+		}
+		return headers;
+	}
+	
+	private static JSONObject parse(String request) {
+		JSONObject body = new JSONObject(request);
+		return body;
+	}
+	
+	// TODO: implement this so the correct function is called with the correct number of arguments etc. 
+	private static Object callAccountFunction(String method, Object args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException { 
 		Class<Account> account = Account.class;
 		for (Method account_method: account.getMethods()) {
-			System.out.println(account_method);
+			if (account_method.getName().toLowerCase().contains(method.toLowerCase())) {
+				System.out.println("call method " + method);
+				System.out.println(account_method.getParameterCount());
+				//return account_method.invoke(null, null);
+			}
 		}
 		return null;
 	}

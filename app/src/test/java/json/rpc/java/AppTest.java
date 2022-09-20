@@ -6,9 +6,16 @@ package json.rpc.java;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.io.IOException;
+
 class AppTest {
     @Test void appHasAGreeting() {
-        App classUnderTest = new App();
+        try {
+			App classUnderTest = new App(80);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         Integer port = 80;
         //assertNotNull(classUnderTest.listen(port), "app should have a greeting");
     }
