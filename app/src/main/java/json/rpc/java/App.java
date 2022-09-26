@@ -13,22 +13,23 @@ import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
 import com.hedera.hashgraph.sdk.PrecheckStatusException;
 import com.hedera.hashgraph.sdk.ReceiptStatusException;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Stream;
+import java.util.Iterator;
+import java.util.Set;
 
 import org.json.*;
 
@@ -40,10 +41,73 @@ public class App {
 		App.listen(port);
 	}
 
-    public static void main(String[] args) throws TimeoutException, PrecheckStatusException, ReceiptStatusException, IOException {
-    	System.out.println("-- JSON-RPC java server running --");
-    	listen(80);
-    } 
+	private static Selector selector = null;
+
+    public static void main(String[] args) {
+
+        try {
+            selector = Selector.open();
+//            We have to set connection host, port and non-blocking mode
+            ServerSocketChannel socket = ServerSocketChannel.open();
+            ServerSocket serverSocket = socket.socket();
+            serverSocket.bind(new InetSocketAddress("localhost", 8080));
+            socket.configureBlocking(false);
+            int ops = socket.validOps();
+            socket.register(selector, ops, null);
+            System.out.println("-- JSON-RPC java server running --");
+            while (true) {
+                selector.select();
+                Set<SelectionKey> selectedKeys = selector.selectedKeys();
+                Iterator<SelectionKey> i = selectedKeys.iterator();
+
+                while (i.hasNext()) {
+                    SelectionKey key = i.next();
+
+                    if (key.isAcceptable()) {
+//                        New client has been accepted
+                        handleAccept(socket, key);
+                    } else if (key.isReadable()) {
+//                        We can run non-blocking operation READ on our client
+                        handleRead(key);
+                    }
+                    i.remove();
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    private static void handleAccept(ServerSocketChannel mySocket, SelectionKey key) throws IOException {
+    	System.out.println("Connection Accepted...");
+		
+		// Accept the connection and set non-blocking mode
+		SocketChannel client = mySocket.accept();
+		client.configureBlocking(false);
+		
+		// Register that client is reading this channel
+		client.register(selector, SelectionKey.OP_READ);
+	}
+		
+	private static void handleRead(SelectionKey key) throws IOException {
+		
+		System.out.println("Reading...");
+		// create a ServerSocketChannel to read the request
+		SocketChannel client = (SocketChannel) key.channel();
+		
+		// Create buffer to read data
+		ByteBuffer buffer = ByteBuffer.allocate(1024);
+		client.read(buffer);
+		//Parse data from buffer to String
+		String data = new String(buffer.array()).trim();
+		if (data.length() > 0) {
+			System.out.println("Received message: " + data);
+			
+			if (data.equalsIgnoreCase("exit")) {
+				client.close();
+				System.out.println("Connection closed...");
+			}
+		}
+	}
 	
 	public static void listen(Integer port) throws IOException {
 		ServerSocket ss = null;
@@ -61,8 +125,8 @@ public class App {
 		        out.print("Connection: close\r\n"); // Will close stream
 		        out.print("\r\n"); // End of headers
 		        
-		        String response = handle(in);
-		        out.print(response);
+		        //String response = handle(in);
+		        //out.print(response);
 		        
 		        // TODO: find a way to implement this properly
 		        // because of the way the API call is made there is no end of file declared for the body
@@ -121,56 +185,6 @@ public class App {
 		}
 	}
 	
-	private static String handle(BufferedReader in) {
-		String line;
-        ArrayList<String> string_headers = new ArrayList<String>();
-        StringBuilder response = new StringBuilder();
-        try {
-			while ((line = in.readLine()) != null) {
-			  if (line.length() == 0) {
-				  break;
-			  }
-			  string_headers.add(line);
-			}
-			
-			if (string_headers.size() > 0) {
-				StringBuilder str_body = new StringBuilder();
-				String body_line;
-				int read_bytes = 0;
-				int new_read_bytes = 0;
-				while ((body_line = in.readLine()) != null) {
-	        		new_read_bytes = read_bytes;
-	        		read_bytes = in.read();
-	        		if (read_bytes > new_read_bytes && new_read_bytes > 0) {
-	        			str_body.append(body_line);
-	        			str_body.append("}");
-	        			break;
-	        		}
-	        		str_body.append(body_line);
-	        	}
-				JSONObject body = parse(str_body.toString());
-				String method = body.getString("method");
-				Object params = body.get("params");
-				Object rep = callAccountFunction(method, params);
-			} else {
-				// TODO implement if no body, just headers (GET request)
-			}
-			
-		} catch (IOException e) {
-			return null;
-		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        return response.toString();
-	}
-	
 	private static JSONObject parse(ArrayList<String> request) {
 		String[] parts;
 		JSONObject headers = new JSONObject();
@@ -199,13 +213,6 @@ public class App {
 			}
 		}
 		return null;
-	}
-	
-	@SuppressWarnings("serial")
-	@JsonRpcError(code = -32032, message ="Generic error")
-	public class GenericException extends Exception {
-		
-	}
-	
-	
+	}	
+
 }
