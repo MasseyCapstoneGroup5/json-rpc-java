@@ -6,16 +6,12 @@
  */
 package json.rpc.java;
 
-import json.rpc.java.methods.Account;
-
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcError;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
 import com.hedera.hashgraph.sdk.PrecheckStatusException;
 import com.hedera.hashgraph.sdk.ReceiptStatusException;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.concurrent.TimeoutException;
 
 
@@ -28,6 +24,7 @@ public class App {
 	
 	// start the JSON-RPC server
     public static void main(String[] args) throws TimeoutException, PrecheckStatusException, ReceiptStatusException, IOException {
+    	System.out.println(args);
     	listen(8080);
     } 
 	
@@ -35,19 +32,6 @@ public class App {
 		JavaHttpServer server = new JavaHttpServer(port, "/", new HttpRequestHandler());
 		server.start();
 		System.out.println("Server is started and listening on port "+ port);
-	}
-	
-	// TODO: implement this so the correct function is called with the correct number of arguments etc. 
-	private static Object callAccountFunction(String method, Object args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException { 
-		Class<Account> account = Account.class;
-		for (Method account_method: account.getMethods()) {
-			if (account_method.getName().toLowerCase().contains(method.toLowerCase())) {
-				System.out.println("call method " + method);
-				System.out.println(account_method.getParameterCount());
-				//return account_method.invoke(null, null);
-			}
-		}
-		return null;
 	}
 	
 	@SuppressWarnings("serial")

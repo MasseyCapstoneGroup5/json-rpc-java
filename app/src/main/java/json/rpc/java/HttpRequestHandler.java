@@ -4,11 +4,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import org.apache.commons.io.IOUtils;
  
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+
+import json.rpc.java.methods.Account;
  
 /**
  * @author ashraf
@@ -48,6 +52,20 @@ public class HttpRequestHandler implements HttpHandler {
         os.write(response.getBytes());
         os.close();
     }
+    
+    
+	// TODO: implement this so the correct function is called with the correct number of arguments etc. 
+	private static Object callAccountFunction(String method, Object args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException { 
+		Class<Account> account = Account.class;
+		for (Method account_method: account.getMethods()) {
+			if (account_method.getName().toLowerCase().contains(method.toLowerCase())) {
+				System.out.println("call method " + method);
+				System.out.println(account_method.getParameterCount());
+				//return account_method.invoke(null, null);
+			}
+		}
+		return null;
+	}
      
     /**
      * Creates the response from query params.
