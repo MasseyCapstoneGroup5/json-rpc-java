@@ -13,179 +13,28 @@ import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
 import com.hedera.hashgraph.sdk.PrecheckStatusException;
 import com.hedera.hashgraph.sdk.ReceiptStatusException;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Stream;
 
-import org.json.*;
 
 @JsonRpcService
 public class App {
 	
-	public App(Integer port) throws IOException {
-		System.out.println("-- JSON-RPC java server running --");
+	public App(int port) throws IOException {
 		App.listen(port);
 	}
-
+	
+	// start the JSON-RPC server
     public static void main(String[] args) throws TimeoutException, PrecheckStatusException, ReceiptStatusException, IOException {
-    	System.out.println("-- JSON-RPC java server running --");
-    	listen(80);
+    	listen(8080);
     } 
 	
 	public static void listen(Integer port) throws IOException {
-		ServerSocket ss = null;
-		try {
-		      ss = new ServerSocket(port);
-		      for (;;) {
-		        Socket client = ss.accept();
-		        BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-		        //DataInputStream in = new DataInputStream(new BufferedInputStream(client.getInputStream()));
-		        PrintWriter out = new PrintWriter(client.getOutputStream());
-		        
-		        // generic response
-		        out.print("HTTP/1.1 200 \r\n"); // Version & status code
-		        out.print("Content-Type: text/plain\r\n"); // The type of data
-		        out.print("Connection: close\r\n"); // Will close stream
-		        out.print("\r\n"); // End of headers
-		        
-		        String response = handle(in);
-		        out.print(response);
-		        
-		        // TODO: find a way to implement this properly
-		        // because of the way the API call is made there is no end of file declared for the body
-		        // so the input stream never closes, and if it tries to read more bytes than are there, it will 
-		        // continue listening for more data and not return a response 
-		        
-//		        int length = 0;
-//		        try {
-//		        	length = in.readInt();
-//		        } catch (EOFException e) {
-//		        	// TODO: implement error handling for end of file
-//		        }
-//		        System.out.println(length);
-
-//		        byte[] messageByte = new byte[length];
-//		        if (length > 0) {
-//		        	boolean end = false;
-//			        StringBuilder dataString = new StringBuilder(length);
-//			        int totalBytesRead = 0;
-//			        while (!end) {
-//			        	int currentBytesRead = in.read(messageByte);
-//			        	if (currentBytesRead == -1) {
-//			        		end = true;
-//			        		break;
-//			        	}
-//			            totalBytesRead = currentBytesRead + totalBytesRead;
-//			            System.out.println(totalBytesRead);
-//			            if(totalBytesRead <= length) {
-//			                dataString
-//			                  .append(new String(messageByte, 0, currentBytesRead, StandardCharsets.UTF_8));
-//			            } else {
-//			                dataString
-//			                  .append(new String(messageByte, 0, length - totalBytesRead + currentBytesRead, 
-//			                  StandardCharsets.UTF_8));
-//			            }
-//			            if(dataString.length()>=length) {
-//			                end = true;
-//			            }
-//			        }
-//		        }
-		        
-		        // Close socket, breaking the connection to the client, and
-		        // closing the input and output streams
-		        out.close(); // Flush and close the output stream
-		        in.close(); // Close the input stream
-		        client.close(); // Close the socket itself
-		        
-		      } // Now loop again, waiting for the next connection
-		    }
-		    catch (Exception e) {
-		      System.err.println(e);
-		      System.err.println("Usage: java HttpMirror <port>");
-		    }
-		if (ss != null) {
-			ss.close();
-		}
-	}
-	
-	private static String handle(BufferedReader in) {
-		String line;
-        ArrayList<String> string_headers = new ArrayList<String>();
-        StringBuilder response = new StringBuilder();
-        try {
-			while ((line = in.readLine()) != null) {
-			  if (line.length() == 0) {
-				  break;
-			  }
-			  string_headers.add(line);
-			}
-			
-			if (string_headers.size() > 0) {
-				StringBuilder str_body = new StringBuilder();
-				String body_line;
-				int read_bytes = 0;
-				int new_read_bytes = 0;
-				while ((body_line = in.readLine()) != null) {
-	        		new_read_bytes = read_bytes;
-	        		read_bytes = in.read();
-	        		if (read_bytes > new_read_bytes && new_read_bytes > 0) {
-	        			str_body.append(body_line);
-	        			str_body.append("}");
-	        			break;
-	        		}
-	        		str_body.append(body_line);
-	        	}
-				JSONObject body = parse(str_body.toString());
-				String method = body.getString("method");
-				Object params = body.get("params");
-				Object rep = callAccountFunction(method, params);
-			} else {
-				// TODO implement if no body, just headers (GET request)
-			}
-			
-		} catch (IOException e) {
-			return null;
-		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        return response.toString();
-	}
-	
-	private static JSONObject parse(ArrayList<String> request) {
-		String[] parts;
-		JSONObject headers = new JSONObject();
-		for (String req: request) {
-			if (req.contains(": ")) {
-				parts = req.split(": ");
-				headers.put(parts[0], parts[1]);
-			}
-		}
-		return headers;
-	}
-	
-	private static JSONObject parse(String request) {
-		JSONObject body = new JSONObject(request);
-		return body;
+		JavaHttpServer server = new JavaHttpServer(port, "/", new HttpRequestHandler());
+		server.start();
+		System.out.println("Server is started and listening on port "+ port);
 	}
 	
 	// TODO: implement this so the correct function is called with the correct number of arguments etc. 
