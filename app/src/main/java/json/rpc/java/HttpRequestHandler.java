@@ -11,8 +11,10 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.commons.io.IOUtils;
  
@@ -76,6 +78,7 @@ public class HttpRequestHandler implements HttpHandler {
     	Method method_to_call = null;
 		try {
 			method_to_call = account(method, params);
+			invoke_method(method_to_call, params);
 		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -89,33 +92,18 @@ public class HttpRequestHandler implements HttpHandler {
     }
     
     // json.rpc.java.methods.Account
+    // check through the methods and find one that you can call from the method name and parameter names passed through
 	private static Method account(String method, JSONObject args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException { 
 		Class<Account> account = Account.class;
 		Iterator<String> keys = args.keys();
-		ArrayList<String> string_keys = new ArrayList<>();
-		while (keys.hasNext()) {
-			string_keys.add(keys.next().toLowerCase());
-		}
-		
-		for (Method account_method: account.getMethods()) {
-			if (account_method.getName().toLowerCase().contains(method.toLowerCase())) {
-				if (account_method.getParameterCount() == args.length()) {
-					if (checkFunction(string_keys, get_parameter_names(account_method))) {
-						return account_method;
-					}
-				}
-			}
-		}
-		return null;
+		List<String> string_keys = Stream.of(keys).map(i -> keys.next().toLowerCase()).collect(Collectors.toList());
+		List<Method> methods = Stream.of(account.getMethods()).filter(i -> i.getName().toLowerCase().contains(method.toLowerCase()) 
+				&& checkFunction(string_keys, get_parameter_names(i))).collect(Collectors.toList());
+		return methods.get(0);
 	}
 	
-	private static ArrayList<String> get_parameter_names(Method account_method) {
-		ArrayList<String> parameters = new ArrayList<>();
-		for (Class<?> param: account_method.getParameterTypes()) {
-			String param_name = param.getSimpleName().toLowerCase();
-			parameters.add(param_name);
-		}
-		return parameters;
+	private static List<String> get_parameter_names(Method account_method) {
+		return Stream.of(account_method.getParameterTypes()).map(i -> i.getSimpleName().toLowerCase()).collect(Collectors.toList());
 	}
 	
 	private static String invoke_method(Method method, JSONObject args) {
@@ -131,8 +119,9 @@ public class HttpRequestHandler implements HttpHandler {
 		return null;
 	}
 	
-	
-	private static Boolean checkFunction(ArrayList<String> keys, ArrayList<String> parameters) {
+	// check to see if passed in parameters match the parameters for the method
+	// baring in mind that methods will be overloaded
+	private static Boolean checkFunction(List<String> keys, List<String> parameters) {
 		return (keys.stream().filter(parameters::contains).count() == keys.size());
 	}
      
