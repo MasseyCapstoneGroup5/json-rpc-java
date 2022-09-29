@@ -6,14 +6,22 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Stream;
+import java.util.stream.Collectors;
+
 import org.apache.commons.io.IOUtils;
  
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
 import json.rpc.java.methods.Account;
- 
+import org.json.*;
+
 /**
  * @author ashraf
  * Code retrieved from https://examples.javacodegeeks.com/core-java/sun/net-sun/httpserver-net-sun/httpserver-net-sun-httpserver-net-sun/com-sun-net-httpserver-httpserver-example/
@@ -36,14 +44,21 @@ public class HttpRequestHandler implements HttpHandler {
     public void handle(HttpExchange t) throws IOException {
  
         //Create a response form the request query parameters
-    	String method = t.getRequestMethod();
-    	InputStream body = t.getRequestBody();
-    	System.out.println(method);
-    	StringWriter writer = new StringWriter();
-    	IOUtils.copy(body, writer, "UTF-8");
-    	System.out.println(writer.toString());
-        URI uri = t.getRequestURI();
-        String response = createResponseFromQueryParams(uri);
+    	String method = t.getRequestMethod().toLowerCase();
+    	String response = "";
+    	if (method.equals("get")) {
+    		//URI uri = t.getRequestURI();
+            //response = createResponseFromQueryParams(uri);
+    		response = getRequest();
+    	} else if (method.equals("post")) {
+    		InputStream body = t.getRequestBody();
+    		StringWriter writer = new StringWriter();
+        	IOUtils.copy(body, writer, "UTF-8");
+    		response = postRequest(writer.toString());
+    	}
+    	
+        //URI uri = t.getRequestURI();
+        //String response = createResponseFromQueryParams(uri);
         System.out.println("Response: " + response);
         //Set the response header status and length
         t.sendResponseHeaders(HTTP_OK_STATUS, response.getBytes().length);
@@ -54,17 +69,71 @@ public class HttpRequestHandler implements HttpHandler {
     }
     
     
-	// TODO: implement this so the correct function is called with the correct number of arguments etc. 
-	private static Object callAccountFunction(String method, Object args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException { 
+    private static String postRequest(String body) {
+    	JSONObject body_json = new JSONObject(body);
+    	String method = body_json.get("method").toString();
+    	JSONObject params = (JSONObject) body_json.get("params");
+    	Method method_to_call = null;
+		try {
+			method_to_call = account(method, params);
+		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	return "Hello";
+    }
+    
+    
+    private static String getRequest() {
+    	return null;
+    }
+    
+    // json.rpc.java.methods.Account
+	private static Method account(String method, JSONObject args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException { 
 		Class<Account> account = Account.class;
+		Iterator<String> keys = args.keys();
+		ArrayList<String> string_keys = new ArrayList<>();
+		while (keys.hasNext()) {
+			string_keys.add(keys.next().toLowerCase());
+		}
+		
 		for (Method account_method: account.getMethods()) {
 			if (account_method.getName().toLowerCase().contains(method.toLowerCase())) {
-				System.out.println("call method " + method);
-				System.out.println(account_method.getParameterCount());
-				//return account_method.invoke(null, null);
+				if (account_method.getParameterCount() == args.length()) {
+					if (checkFunction(string_keys, get_parameter_names(account_method))) {
+						return account_method;
+					}
+				}
 			}
 		}
 		return null;
+	}
+	
+	private static ArrayList<String> get_parameter_names(Method account_method) {
+		ArrayList<String> parameters = new ArrayList<>();
+		for (Class<?> param: account_method.getParameterTypes()) {
+			String param_name = param.getSimpleName().toLowerCase();
+			parameters.add(param_name);
+		}
+		return parameters;
+	}
+	
+	private static String invoke_method(Method method, JSONObject args) {
+		try {
+			// convert each parameter to the correct type
+			System.out.println("convert each parameter value to the desired type");
+			
+			//method.invoke(args, null);
+		} catch (IllegalArgumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	
+	private static Boolean checkFunction(ArrayList<String> keys, ArrayList<String> parameters) {
+		return (keys.stream().filter(parameters::contains).count() == keys.size());
 	}
      
     /**
@@ -80,7 +149,6 @@ public class HttpRequestHandler implements HttpHandler {
         //Get the request query
         String query = uri.getQuery();
         if (query != null) {
-            System.out.println("Query: " + query);
             String[] queryParams = query.split(AND_DELIMITER);
             if (queryParams.length > 0) {
                 for (String qParam : queryParams) {
