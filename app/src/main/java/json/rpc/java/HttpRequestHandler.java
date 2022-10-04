@@ -6,23 +6,24 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Iterator;
+//import java.util.Iterator;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.apache.commons.io.IOUtils;
- 
+
+import com.hedera.hashgraph.sdk.AccountId;
+import com.hedera.hashgraph.sdk.Client;
+import com.hedera.hashgraph.sdk.PrivateKey;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
-import json.rpc.java.methods.Account;
+import json.rpc.java.methods.CreateAccount;
+import json.rpc.java.methods.Sdk;
 import org.json.*;
+
 
 /**
  * @author ashraf
@@ -42,9 +43,10 @@ public class HttpRequestHandler implements HttpHandler {
      
     private static final String AND_DELIMITER = "&";
     private static final String EQUAL_DELIMITER = "=";
+    
+    private static Client client = null; 
      
     public void handle(HttpExchange t) throws IOException {
- 
         //Create a response form the request query parameters
     	String method = t.getRequestMethod().toLowerCase();
     	String response = "";
@@ -53,10 +55,22 @@ public class HttpRequestHandler implements HttpHandler {
             //response = createResponseFromQueryParams(uri);
     		response = getRequest();
     	} else if (method.equals("post")) {
-    		InputStream body = t.getRequestBody();
-    		StringWriter writer = new StringWriter();
-        	IOUtils.copy(body, writer, "UTF-8");
-    		response = postRequest(writer.toString());
+    		if (t.getAttribute("method") == "reset") {
+    			Boolean s_reset = Sdk.reset();
+    			if (s_reset == true) { 
+    				response = "Reset client";
+    			} else {
+    				response = "Failed to reset client";
+    			}
+    			
+    		} else {
+        		InputStream body = t.getRequestBody();
+        		StringWriter writer = new StringWriter();
+            	IOUtils.copy(body, writer, "UTF-8");
+            	String str_body = writer.toString();
+            	System.out.println(str_body);
+        		response = postRequest(str_body);
+    		}
     	}
     	
         //URI uri = t.getRequestURI();
@@ -74,16 +88,53 @@ public class HttpRequestHandler implements HttpHandler {
     private static String postRequest(String body) {
     	JSONObject body_json = new JSONObject(body);
     	String method = body_json.get("method").toString();
-    	JSONObject params = (JSONObject) body_json.get("params");
+    	JSONObject params = null;
+    	try  {
+    		params = (JSONObject) body_json.get("params");
+    	} catch (Exception e) {
+    		
+    	}
     	Method method_to_call = null;
+    	Object response = null;
+    	
 		try {
-			method_to_call = account(method, params);
-			invoke_method(method_to_call, params);
-		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			//method_to_call = account(method, params);
+			if (method.toLowerCase().equals("setup")) {
+				AccountId operatorAccountId = AccountId.fromString((String) params.get("operatorAccountId"));
+				PrivateKey operatorPrivateKey = PrivateKey.fromString((String) params.get("operatorPrivateKey"));
+				client = Sdk.setup(operatorAccountId, operatorPrivateKey, null, null, null);
+			} else if (method.toLowerCase().contains("createaccount")) {
+				method_to_call = createAccount(method);
+			}
+
+			
+			if (method.toLowerCase().equals("reset")) {
+				Boolean reset = Sdk.reset();
+				
+				if (reset) {
+					response = "Successfully reset client";
+				} else {
+					response = "Unable to reset client";
+				}
+			} else if (method.toLowerCase().contains("setup")) {
+				response = "Successfully setup client";
+				
+			} else if (method_to_call != null) {
+				response = invoke_method(method_to_call, params);
+			} else if (method.toLowerCase() != "setup" && method.toLowerCase() != "reset") {
+				return method + " isn't a function";
+			}
+		} catch (IllegalArgumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SecurityException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-    	return "Hello";
+    	return response.toString();
     }
     
     
@@ -93,38 +144,49 @@ public class HttpRequestHandler implements HttpHandler {
     
     // json.rpc.java.methods.Account
     // check through the methods and find one that you can call from the method name and parameter names passed through
-	private static Method account(String method, JSONObject args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException { 
-		Class<Account> account = Account.class;
-		Iterator<String> keys = args.keys();
-		List<String> string_keys = Stream.of(keys).map(i -> keys.next().toLowerCase()).collect(Collectors.toList());
-		List<Method> methods = Stream.of(account.getMethods()).filter(i -> i.getName().toLowerCase().contains(method.toLowerCase()) 
-				&& checkFunction(string_keys, get_parameter_names(i))).collect(Collectors.toList());
-		return methods.get(0);
-	}
+//	private static Method account(String method, JSONObject args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException { 
+//		Class<Account> account = Account.class;
+//		Iterator<String> keys = args.keys();
+//		List<String> string_keys = Stream.of(keys).map(i -> keys.next().toLowerCase()).collect(Collectors.toList());
+//		List<Method> methods = Stream.of(account.getMethods()).filter(i -> i.getName().toLowerCase().contains(method.toLowerCase()) 
+//				&& checkFunction(string_keys, get_parameter_names(i))).collect(Collectors.toList());
+//		return methods.get(0);
+//	}
 	
-	private static List<String> get_parameter_names(Method account_method) {
-		return Stream.of(account_method.getParameterTypes()).map(i -> i.getSimpleName().toLowerCase()).collect(Collectors.toList());
-	}
+//	private static List<String> get_parameter_names(Method account_method) {
+//		return Stream.of(account_method.getParameterTypes()).map(i -> i.getSimpleName().toLowerCase()).collect(Collectors.toList());
+//	}
+    
+    private static Method createAccount(String method) {
+    	Class<CreateAccount> account = CreateAccount.class;
+    	List<Method> methods = Stream.of(account.getMethods()).filter(i -> i.getName().toLowerCase().contains(method.toLowerCase())).collect(Collectors.toList());
+    	return methods.get(0);
+    }
 	
-	private static String invoke_method(Method method, JSONObject args) {
+	private static Object invoke_method(Method method, JSONObject args) {
+		Object response = null;
 		try {
-			// convert each parameter to the correct type
-			System.out.println("convert each parameter value to the desired type");
-			
-			//method.invoke(args, null);
+			System.out.println("Invoking method " + method.getName());
+			response = method.invoke(method, args);
 		} catch (IllegalArgumentException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		return null;
+		return response;
 	}
 	
 	// check to see if passed in parameters match the parameters for the method
 	// baring in mind that methods will be overloaded
-	private static Boolean checkFunction(List<String> keys, List<String> parameters) {
-		return (keys.stream().filter(parameters::contains).count() == keys.size());
-	}
-     
+//	private static Boolean checkFunction(List<String> keys, List<String> parameters) {
+//		return (keys.stream().filter(parameters::contains).count() == keys.size());
+//	}
+//     
     /**
      * Creates the response from query params.
      *

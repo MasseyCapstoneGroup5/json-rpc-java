@@ -8,18 +8,7 @@ package json.rpc.java;
 
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcError;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
-import com.hedera.hashgraph.sdk.PrecheckStatusException;
-import com.hedera.hashgraph.sdk.ReceiptStatusException;
-
 import java.io.IOException;
-import java.io.PrintStream;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.util.concurrent.TimeoutException;
-
-import json.rpc.java.methods.Account;
-
 
 @JsonRpcService
 public class App {
@@ -29,8 +18,8 @@ public class App {
 	}
 	
 	// start the JSON-RPC server
-    public static void main(String[] args) throws TimeoutException, PrecheckStatusException, ReceiptStatusException, IOException {
-    	listen(8080); 
+    public static void main(String[] args) throws IOException {
+    	listen(8080);
     } 
 	
 	public static void listen(Integer port) throws IOException {
