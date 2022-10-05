@@ -20,10 +20,8 @@ import com.hedera.hashgraph.sdk.ReceiptStatusException;
 import com.hedera.hashgraph.sdk.TransactionResponse;
 
 public class CreateAccount {
-	private static Client client = Sdk.client;
-	
 	@JsonRpcMethod
-	public static AccountId createAccount(Object obj_args) {
+	public static String createAccount(Object obj_args) {
 		/**
 		 * @param publicKey required
 		 * @param initialBalance optional 
@@ -33,18 +31,24 @@ public class CreateAccount {
 		 * @param declineStakingReward optional
 		 * @param accountMemo optional
 		 */
+		
+		String response = "";
+		
+		Client client = Sdk.getClient();
+		if (client == null) {
+			return "Please run setup API call first";
+		}
 		Integer initialBalance = 1000;
 		Boolean receiverSignatureRequired = null;
 		Integer maxAutomaticTokenAssociations = null;
-		AccountId stakedAccountId = null;
-		AccountId stakedNodeId = null;
-		Boolean declineStakingReward = null;
+//		AccountId stakedAccountId = null;
+//		Long stakedNodeId = null;
+//		Boolean declineStakingReward = null;
 		String accountMemo = null;
 		
 		JSONObject args = (JSONObject) obj_args;
 		Iterator<String> keys = args.keys();	
 		List<String> string_keys = Stream.of(keys).map(i -> keys.next().toLowerCase()).collect(Collectors.toList());
-		
 		for (String key: string_keys) {
 			if (key.toLowerCase().equals("initalbalance")) {
 				initialBalance = (Integer) args.get(key);
@@ -52,56 +56,62 @@ public class CreateAccount {
 				receiverSignatureRequired = (Boolean) args.get(key);
 			} else if (key.toLowerCase().equals("maxautomatictokenassociations")) {
 				maxAutomaticTokenAssociations = (Integer) args.get(key);
-			} else if (key.toLowerCase().equals("stakedaccountid")) {
-				stakedAccountId = (AccountId) args.get(key);
-			} else if (key.toLowerCase().equals("stakednodeid")) {
-				stakedNodeId = (AccountId) args.get(key);
-			} else if (key.toLowerCase().equals("declinestakingreward")) {
-				declineStakingReward = (Boolean) args.get(key);
+//			} else if (key.toLowerCase().equals("stakedaccountid")) {
+//				stakedAccountId = (AccountId) args.get(key);
+//			} else if (key.toLowerCase().equals("stakednodeid")) {
+//				stakedNodeId = (Long) args.get(key);
+//			} else if (key.toLowerCase().equals("declinestakingreward")) {
+//				declineStakingReward = (Boolean) args.get(key);
 			} else if (key.toLowerCase().equals("accountmemo")) {
 				accountMemo = args.getString(key);
 			}
 		}
 //		
-//		// TODO: error checking here, make sure publicKey is specified
-		PublicKey publicKey = PublicKey.fromString((String) args.get("publicKey"));
-		PrivateKey newAccountPrivateKey = PrivateKey.generateED25519();
-		PublicKey newAccountPublicKey = newAccountPrivateKey.getPublicKey();
-		AccountId newAccountId = null;
-      //Create new account and assign the public key
-      TransactionResponse newAccount = null;
-//		try {
-		try { 
-			newAccount = new AccountCreateTransaction()
-					.setKey(newAccountPublicKey)
-			        .setInitialBalance(Hbar.fromTinybars(initialBalance))
-			        .execute(client);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+//		// TODO: error checking here + make sure publicKey is specified
 		
+        PrivateKey newAccountPrivateKey = PrivateKey.generateED25519();
+        PublicKey newAccountPublicKey = newAccountPrivateKey.getPublicKey();
+        AccountId newAccountId = null;
+        TransactionResponse newAccount = null;
+        AccountCreateTransaction accountCreateTransaction = null;
 		try {
+			accountCreateTransaction = new AccountCreateTransaction()
+			        .setKey(newAccountPublicKey)
+			        .setInitialBalance( Hbar.fromTinybars(initialBalance));
+			if (receiverSignatureRequired != null) {
+				accountCreateTransaction.setReceiverSignatureRequired(receiverSignatureRequired);
+			}
+			if (maxAutomaticTokenAssociations != null && maxAutomaticTokenAssociations != 0) {
+				accountCreateTransaction.setMaxAutomaticTokenAssociations(maxAutomaticTokenAssociations);
+			}
+			// TODO: below methods aren't available for Java
+//			if (stakedAccountId != null) {
+//				accountCreateTransaction.setStakedAccountId(stakedAccountId);
+//			}
+			
+//			if (stakedNodeId != null) {
+//				accountCreateTransaction.setStakedNodeId(stakedNodeId);
+//			}
+			
+//			if (declineStakingReward != null) {
+//				accountCreateTransaction.setDeclineStakingReward(declineStakingReward);
+//			}
+//			
+			if (accountMemo != null) {
+				accountCreateTransaction.setAccountMemo(accountMemo);
+			}
+			newAccount = accountCreateTransaction.execute(client);
 			newAccountId = newAccount.getReceipt(client).accountId;
-		} catch (Exception e) {
-			System.out.println("2");
+			response = "Successfully created new account";
+		} catch (TimeoutException | PrecheckStatusException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ReceiptStatusException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-			        
-			System.out.println(client);
-			
-			System.out.println("here");
-//		} catch (TimeoutException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (PrecheckStatusException e) {
-//			e.printStackTrace();
-//		} catch (ReceiptStatusException e) {
-//			e.printStackTrace();
-//		}
-		
-		System.out.println("new account id : " + newAccountId.toString());
-
-		return newAccountId;
+        
+        return newAccountId.toString();
 	}
 	
 

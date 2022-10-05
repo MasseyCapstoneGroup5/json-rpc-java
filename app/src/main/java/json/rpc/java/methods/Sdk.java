@@ -9,17 +9,29 @@ import com.hedera.hashgraph.sdk.Client;
 import com.hedera.hashgraph.sdk.PrivateKey;
 
 public class Sdk {
-	static Client client;
-	/*
-	 * @param operatorAccountId
-	 * @param operatorPrivateKey
-	 * @param nodeIp (optional)
-	 * @param nodeAccountId (optional)
-	 * @param mirrorNetworkIp (optional)
-	 */
+	private static final Sdk sdk = new Sdk();
+	static Client client = null;
+
+	private Sdk() {
+	}
 	
-	public static Client setup(AccountId operatorAccountId, PrivateKey operatorPrivateKey, String nodeIp, Long nodeAccountId, 
+	public static Sdk getInstance() {
+		return sdk;
+	}
+	
+	public static Client getClient() {
+		return client;
+	}
+	
+	public static Client setup(String operatorAccountId, String operatorPrivateKey, String nodeIp, Long nodeAccountId, 
 			List<String> mirrorNetworkIp) throws InterruptedException {
+		/*
+		 * @param operatorAccountId
+		 * @param operatorPrivateKey
+		 * @param nodeIp (optional)
+		 * @param nodeAccountId (optional)
+		 * @param mirrorNetworkIp (optional)
+		 */
 		if (nodeIp != null && nodeAccountId != null && mirrorNetworkIp != null) {
 			// Create client
 			Map<String, AccountId> node = new HashMap<>();
@@ -29,10 +41,8 @@ public class Sdk {
 			// Default to testnet client
 			Sdk.client = Client.forTestnet();
 		}
-		operatorAccountId = AccountId.fromString("0.0.47769083");
-		operatorPrivateKey = PrivateKey.fromString("302e020100300506032b657004220420ae09145d483b0e78cf2cb962856419b46903c7b4b018093521e7402df41b2e4c");
-		
-		Sdk.client.setOperator(operatorAccountId, operatorPrivateKey);
+
+		Sdk.client.setOperator(AccountId.fromString(operatorAccountId), PrivateKey.fromString(operatorPrivateKey));
 		return Sdk.client;
 	}
 	

@@ -8,6 +8,7 @@ package json.rpc.java;
 
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcError;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
+
 import java.io.IOException;
 
 @JsonRpcService
