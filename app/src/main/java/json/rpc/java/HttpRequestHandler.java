@@ -6,20 +6,14 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URI;
 //import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
 
-import com.hedera.hashgraph.sdk.AccountId;
 import com.hedera.hashgraph.sdk.Client;
-import com.hedera.hashgraph.sdk.PrecheckStatusException;
-import com.hedera.hashgraph.sdk.PrivateKey;
-import com.hedera.hashgraph.sdk.ReceiptStatusException;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
@@ -45,8 +39,8 @@ public class HttpRequestHandler implements HttpHandler {
     }
 
     public void handle(HttpExchange t) throws IOException {
-        //Create a response form the request query parameters
     	String method = t.getRequestMethod().toLowerCase();
+    	// TODO: need a way to pass error codes back and set the httpstatus based on these
     	String response = "";
     	Integer httpStatus = 200;
     	if (method.equals("get")) {
@@ -95,6 +89,7 @@ public class HttpRequestHandler implements HttpHandler {
     		return "unable to parse body";
     	}
     	Method method_to_call = null;
+    	// TODO response to object, return code with it
     	String response = null;
     	
 		try {

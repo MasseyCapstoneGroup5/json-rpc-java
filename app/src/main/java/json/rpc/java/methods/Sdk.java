@@ -16,11 +16,11 @@ public class Sdk {
 	}
 	
 	public static Sdk getInstance() {
-		return sdk;
+		return Sdk.sdk;
 	}
 	
 	public static Client getClient() {
-		return client;
+		return Sdk.client;
 	}
 	
 	public static Client setup(String operatorAccountId, String operatorPrivateKey, String nodeIp, Long nodeAccountId, 
