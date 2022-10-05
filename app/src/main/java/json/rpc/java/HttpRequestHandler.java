@@ -30,30 +30,26 @@ import org.json.*;
 
 /**
  * @author ashraf
- * Code retrieved from https://examples.javacodegeeks.com/core-java/sun/net-sun/httpserver-net-sun/httpserver-net-sun-httpserver-net-sun/com-sun-net-httpserver-httpserver-example/
+ * Code retrieved (and modified) from https://examples.javacodegeeks.com/core-java/sun/net-sun/httpserver-net-sun/httpserver-net-sun-httpserver-net-sun/com-sun-net-httpserver-httpserver-example/
  *
  */
 @SuppressWarnings("restriction")
 public class HttpRequestHandler implements HttpHandler {
-     
-    private static final String F_NAME = "fname";
-    private static final String L_NAME = "lname";
-     
-    private static final int PARAM_NAME_IDX = 0;
-    private static final int PARAM_VALUE_IDX = 1;
-     
-    private static final int HTTP_OK_STATUS = 200;
-     
-    private static final String AND_DELIMITER = "&";
-    private static final String EQUAL_DELIMITER = "=";
+	private static final HttpRequestHandler instance = new HttpRequestHandler();
+    private static int id = 0;
+    
+    private HttpRequestHandler(){}
+    
+    public static HttpRequestHandler getInstance() {
+    	return instance;
+    }
 
     public void handle(HttpExchange t) throws IOException {
         //Create a response form the request query parameters
     	String method = t.getRequestMethod().toLowerCase();
     	String response = "";
+    	Integer httpStatus = 200;
     	if (method.equals("get")) {
-    		//URI uri = t.getRequestURI();
-            //response = createResponseFromQueryParams(uri);
     		response = getRequest();
     		
     	} else if (method.equals("post")) {
@@ -74,14 +70,14 @@ public class HttpRequestHandler implements HttpHandler {
     		}
     	}
     	
-        //URI uri = t.getRequestURI();
-        //String response = createResponseFromQueryParams(uri);
         //Set the response header status and length
-        t.sendResponseHeaders(HTTP_OK_STATUS, response.getBytes().length);
+        t.sendResponseHeaders(httpStatus, response.getBytes().length);
+        
         //Write the response string
         OutputStream os = t.getResponseBody();
         os.write(response.getBytes());
         os.close();
+        HttpRequestHandler.id ++;
     }
     
     
@@ -89,20 +85,25 @@ public class HttpRequestHandler implements HttpHandler {
     	JSONObject body_json = new JSONObject(body);
     	String method = body_json.get("method").toString();
     	JSONObject params = null;
+    	String error_response = "";
+    	Integer error_code = 0;
+    	String jsonrpc = (String) body_json.get("jsonrpc");
     	try  {
     		params = (JSONObject) body_json.get("params");
     	} catch (Exception e) {
-    		
+    		// TODO error if there are no "params"
+    		return "unable to parse body";
     	}
     	Method method_to_call = null;
-    	Object response = null;
+    	String response = null;
     	
 		try {
 			//method_to_call = account(method, params);
 			if (method.toLowerCase().equals("setup")) {
 				Client client = Sdk.setup((String) params.get("operatorAccountId"), (String) params.get("operatorPrivateKey"), null, null, null);
 				if (client == null) {
-					return "Unable to complete setup";
+					// TODO: implement error response for this
+					error_response = "Unable to complete setup";
 				}
 			} else if (method.toLowerCase().contains("createaccount")) {
 				method_to_call = createAccount(method);
@@ -110,11 +111,10 @@ public class HttpRequestHandler implements HttpHandler {
 			
 			if (method.toLowerCase().equals("reset")) {
 				Boolean reset = Sdk.reset();
-				
 				if (reset) {
 					response = "Successfully reset client";
 				} else {
-					response = "Unable to reset client";
+					error_response = "Unable to reset client";
 				}
 			} else if (method.toLowerCase().contains("setup")) {
 				response = "Successfully setup client";
@@ -123,7 +123,8 @@ public class HttpRequestHandler implements HttpHandler {
 				response = invoke_method(method_to_call, params);
 				
 			} else if ((method.toLowerCase() != "setup" && method.toLowerCase() != "reset") || method_to_call == null) {
-				return method + " isn't a function";
+				error_code = -32601;
+				error_response = method + " isn't a function";
 			}
 		} catch (IllegalArgumentException e) {
 			// TODO Auto-generated catch block
@@ -135,7 +136,18 @@ public class HttpRequestHandler implements HttpHandler {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-    	return response.toString();
+		
+		String return_string;
+		if (error_response.length() == 0) {
+			return_string = formatSuccessResponse(jsonrpc, response);
+		} else {
+			JSONObject errorMsg = new JSONObject();
+			errorMsg.append("code", error_code);
+			errorMsg.append("message", error_response);
+			return_string = formatErrorResponse(jsonrpc, errorMsg);
+		}
+		
+    	return return_string.toString();
     }
     
     
@@ -149,7 +161,7 @@ public class HttpRequestHandler implements HttpHandler {
     	return methods.get(0);
     }
 	
-	private static Object invoke_method(Method method, JSONObject args) {
+	private static String invoke_method(Method method, JSONObject args) {
 		String response = null;
 			System.out.println("Invoking method " + method.getName());
 			try {
@@ -158,42 +170,23 @@ public class HttpRequestHandler implements HttpHandler {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			//response = CreateAccount.createAccount(args);
 		return response;
 	}
 	
-    /**
-     * Creates the response from query params.
-     *
-     * @param uri the uri
-     * @return the string
-     */
-    private String createResponseFromQueryParams(URI uri) {
-         
-        String fName = "";
-        String lName = "";
-        //Get the request query
-        String query = uri.getQuery();
-        if (query != null) {
-            String[] queryParams = query.split(AND_DELIMITER);
-            if (queryParams.length > 0) {
-                for (String qParam : queryParams) {
-                    String[] param = qParam.split(EQUAL_DELIMITER);
-                    if (param.length > 0) {
-                        for (int i = 0; i < param.length; i++) {
-                            if (F_NAME.equalsIgnoreCase(param[PARAM_NAME_IDX])) {
-                                fName = param[PARAM_VALUE_IDX];
-                            }
-                            if (L_NAME.equalsIgnoreCase(param[PARAM_NAME_IDX])) {
-                                lName = param[PARAM_VALUE_IDX];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-         
-        return "Hello, " + fName + " " + lName;
+    private static String formatSuccessResponse(String jsonRpcNum, String message) {
+    	JSONObject response_obj = new JSONObject();
+    	response_obj.append("jsonrpc", jsonRpcNum);
+    	response_obj.append("id", HttpRequestHandler.id);
+    	response_obj.append("result", message);
+    	return response_obj.toString();
+    }
+    
+    private static String formatErrorResponse(String jsonRpcNum, JSONObject errorMsg) {
+    	JSONObject response_obj = new JSONObject();
+    	response_obj.append("jsonrpc", jsonRpcNum);
+    	response_obj.append("id", HttpRequestHandler.id);
+    	response_obj.append("error", errorMsg);
+    	return response_obj.toString();
     }
 }
 

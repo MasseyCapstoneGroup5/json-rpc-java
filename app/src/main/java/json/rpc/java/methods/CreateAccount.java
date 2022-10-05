@@ -32,8 +32,6 @@ public class CreateAccount {
 		 * @param accountMemo optional
 		 */
 		
-		String response = "";
-		
 		Client client = Sdk.getClient();
 		if (client == null) {
 			return "Please run setup API call first";
@@ -102,7 +100,6 @@ public class CreateAccount {
 			}
 			newAccount = accountCreateTransaction.execute(client);
 			newAccountId = newAccount.getReceipt(client).accountId;
-			response = "Successfully created new account";
 		} catch (TimeoutException | PrecheckStatusException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

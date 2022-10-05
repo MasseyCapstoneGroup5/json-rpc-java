@@ -24,7 +24,7 @@ public class App {
     } 
 	
 	public static void listen(Integer port) throws IOException {
-		JavaHttpServer server = new JavaHttpServer(port, "/", new HttpRequestHandler());
+		JavaHttpServer server = new JavaHttpServer(port, "/", HttpRequestHandler.getInstance());
 		server.start();
 		System.out.println("Server is started and listening on port "+ port);
 	}
