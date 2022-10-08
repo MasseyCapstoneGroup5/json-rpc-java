@@ -30,31 +30,30 @@ import org.json.*;
 @SuppressWarnings("restriction")
 public class HttpRequestHandler implements HttpHandler {
 	private static final HttpRequestHandler instance = new HttpRequestHandler();
-    private static int id = 0;
-    
+
     private HttpRequestHandler(){}
-    
+
     public static HttpRequestHandler getInstance() {
     	return instance;
     }
 
     public void handle(HttpExchange t) throws IOException {
     	String method = t.getRequestMethod().toLowerCase();
-    	// TODO: need a way to pass error codes back and set the httpstatus based on these
+    	// TODO: need a way to pass error codes back and set the http status based on these
     	String response = "";
     	Integer httpStatus = 200;
     	if (method.equals("get")) {
     		response = getRequest();
-    		
+
     	} else if (method.equals("post")) {
     		if (t.getAttribute("method") == "reset") {
     			Boolean s_reset = Sdk.reset();
-    			if (s_reset == true) { 
+    			if (s_reset) {
     				response = "Reset client";
     			} else {
     				response = "Failed to reset client";
     			}
-    			
+
     		} else {
         		InputStream body = t.getRequestBody();
         		StringWriter writer = new StringWriter();
@@ -63,18 +62,18 @@ public class HttpRequestHandler implements HttpHandler {
         		response = postRequest(str_body);
     		}
     	}
-    	
-        //Set the response header status and length
-        t.sendResponseHeaders(httpStatus, response.getBytes().length);
-        
-        //Write the response string
+
+        //Set and send the response headers
+		t.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+		t.sendResponseHeaders(httpStatus, response.getBytes().length);
+
+		//Write the response string
         OutputStream os = t.getResponseBody();
         os.write(response.getBytes());
         os.close();
-        HttpRequestHandler.id ++;
     }
-    
-    
+
+
     private static String postRequest(String body) {
     	JSONObject body_json = new JSONObject(body);
     	String method = body_json.get("method").toString();
@@ -82,6 +81,7 @@ public class HttpRequestHandler implements HttpHandler {
     	String error_response = "";
     	Integer error_code = 0;
     	String jsonrpc = (String) body_json.get("jsonrpc");
+    	Integer id = (Integer) body_json.get("id");
     	try  {
     		params = (JSONObject) body_json.get("params");
     	} catch (Exception e) {
@@ -91,7 +91,7 @@ public class HttpRequestHandler implements HttpHandler {
     	Method method_to_call = null;
     	// TODO response to object, return code with it
     	String response = null;
-    	
+
 		try {
 			//method_to_call = account(method, params);
 			if (method.toLowerCase().equals("setup")) {
@@ -103,7 +103,7 @@ public class HttpRequestHandler implements HttpHandler {
 			} else if (method.toLowerCase().contains("createaccount")) {
 				method_to_call = createAccount(method);
 			}
-			
+
 			if (method.toLowerCase().equals("reset")) {
 				Boolean reset = Sdk.reset();
 				if (reset) {
@@ -113,10 +113,10 @@ public class HttpRequestHandler implements HttpHandler {
 				}
 			} else if (method.toLowerCase().contains("setup")) {
 				response = "Successfully setup client";
-				
+
 			} else if (method_to_call != null) {
 				response = invoke_method(method_to_call, params);
-				
+
 			} else if ((method.toLowerCase() != "setup" && method.toLowerCase() != "reset") || method_to_call == null) {
 				error_code = -32601;
 				error_response = method + " isn't a function";
@@ -131,31 +131,31 @@ public class HttpRequestHandler implements HttpHandler {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		String return_string;
 		if (error_response.length() == 0) {
-			return_string = formatSuccessResponse(jsonrpc, response);
+			return_string = formatSuccessResponse(jsonrpc, id, response);
 		} else {
 			JSONObject errorMsg = new JSONObject();
-			errorMsg.append("code", error_code);
-			errorMsg.append("message", error_response);
-			return_string = formatErrorResponse(jsonrpc, errorMsg);
+			errorMsg.put("code", error_code);
+			errorMsg.put("message", error_response);
+			return_string = formatErrorResponse(jsonrpc, id, errorMsg);
 		}
-		
+
     	return return_string.toString();
     }
-    
-    
+
+
     private static String getRequest() {
     	return null;
     }
-    
+
     private static Method createAccount(String method) {
     	Class<CreateAccount> account = CreateAccount.class;
     	List<Method> methods = Stream.of(account.getMethods()).filter(i -> i.getName().toLowerCase().contains(method.toLowerCase())).collect(Collectors.toList());
     	return methods.get(0);
     }
-	
+
 	private static String invoke_method(Method method, JSONObject args) {
 		String response = null;
 			System.out.println("Invoking method " + method.getName());
@@ -167,21 +167,21 @@ public class HttpRequestHandler implements HttpHandler {
 			}
 		return response;
 	}
-	
-    private static String formatSuccessResponse(String jsonRpcNum, String message) {
+
+    private static String formatSuccessResponse(String jsonRpcNum, Integer id, String message) {
     	JSONObject response_obj = new JSONObject();
-    	response_obj.append("jsonrpc", jsonRpcNum);
-    	response_obj.append("id", HttpRequestHandler.id);
-    	response_obj.append("result", message);
-    	return response_obj.toString();
+		response_obj.put("jsonrpc", jsonRpcNum);
+		response_obj.put("id", id);
+		response_obj.put("result", message);
+		return response_obj.toString();
     }
-    
-    private static String formatErrorResponse(String jsonRpcNum, JSONObject errorMsg) {
+
+    private static String formatErrorResponse(String jsonRpcNum, Integer id, JSONObject errorMsg) {
     	JSONObject response_obj = new JSONObject();
-    	response_obj.append("jsonrpc", jsonRpcNum);
-    	response_obj.append("id", HttpRequestHandler.id);
-    	response_obj.append("error", errorMsg);
-    	return response_obj.toString();
+		response_obj.put("jsonrpc", jsonRpcNum);
+		response_obj.put("id", id);
+		response_obj.put("error", errorMsg);
+		return response_obj.toString();
     }
 }
 
