@@ -1,20 +1,33 @@
 # json-rpc-java
 
 Json-Rpc server written in Java to handle HTTP requests
+`
 
-# Source Code
-https://github.com/arteam/simple-json-rpc/tree/master/server
+## Prerequisites
 
-## Instructions to run
-Ensure you have git, gradle, Java 8 installed on your computer
-Clone the repository
-```
-git clone https://github.com/MasseyCapstoneGroup5/json-rpc-java.git
-cd json-rpc-java
-gradle build
-```
+* Git,
+* Gradle
+* Java 11+
+  `
 
-## Running the server
-```
-gradle run
-```
+## Setup
+
+Clone repository
+
+    git clone https://github.com/MasseyCapstoneGroup5/json-rpc-java.git
+
+Enter Project directory
+
+    cd json-rpc-java
+
+Gradle build
+
+    gradle build
+
+Run server
+
+    gradle run
+
+
+## Example usage
+See [JSON-RPC JS repository](https://github.com/MasseyCapstoneGroup5/json-rpc-js-sdk)
