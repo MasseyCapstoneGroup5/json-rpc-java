@@ -7,11 +7,16 @@ import json.rpc.java.services.AccountService;
 import json.rpc.java.services.KeyService;
 import json.rpc.java.services.SdkService;
 import org.apache.commons.io.IOUtils;
+import org.json.JSONObject;
+import java.util.stream.Collectors;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 
 
 @SuppressWarnings("restriction")
@@ -51,14 +56,32 @@ public class HttpRequestHandler implements HttpHandler {
         services.add(new KeyService());
 
         JsonRpcServer rpcServer = new JsonRpcServer();
+        JSONObject json_body = new JSONObject(body);
+        String method = json_body.getString("method");
+        JSONObject params = json_body.getJSONObject("params");
+        
+        if (method == "call") {
+        	if (json_body.getString("params").contains("func")) {
+        		method = json_body.getJSONObject("params").getString("func");
+        		params.remove("func");
+        	} else {
+        		method = json_body.getJSONObject("params").getString("callClass");
+        		params = json_body.getJSONObject("params").getJSONObject("methods");
+        	}
+        }
+        
+        String call_method = method;
 
         String response = null;
         for (Object service : services) {
-            response = rpcServer.handle(body, service);
-            if (!(response.contains("-32601") && response.contains("Method not found"))) {
-                // Method found
-                break;
-            }
+        	List<Method> methods = Stream.of(service.getClass().getMethods()).filter(i -> i.getName().toLowerCase().contains(call_method.toLowerCase())).collect(Collectors.toList());
+        	if (methods.size() > 0 ) {
+        		response = rpcServer.handle(body, service);
+	            if (!(response.contains("-32601") && response.contains("Method not found"))) {
+		              // Method found
+		            break;
+		        }
+        	}
         }
         return response;
     }

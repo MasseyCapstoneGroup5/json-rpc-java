@@ -22,3 +22,5 @@ gradle-app.setting
 .classpath
 /bin/
 app/.env
+
+server.jar
