@@ -19,7 +19,7 @@ public class App {
     public static void main(String[] args) {
         listen(8080);
     }
-
+    // creates HTTP server listener of your port of choice
     public static void listen(Integer port) {
         JavaHttpServer server = new JavaHttpServer(port, "/", HttpRequestHandler.getInstance());
         server.start();
