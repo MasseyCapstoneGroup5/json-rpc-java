@@ -17,7 +17,7 @@ public class App {
 
     // start the JSON-RPC server
     public static void main(String[] args) {
-    	Integer port = 8080;
+    	Integer port = 80;
     	if (args.length > 0) {
     		port = Integer.parseInt(args[0]);
     	}

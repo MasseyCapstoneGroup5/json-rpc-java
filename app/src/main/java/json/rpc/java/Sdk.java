@@ -44,19 +44,19 @@ public class Sdk {
     public void setupTestNet(String operatorAccountId, String operatorPrivateKey) {
         // Create testnet client
         resetClient();
-        client = Client.forTestnet();
-        client.setOperator(AccountId.fromString(operatorAccountId), PrivateKey.fromString(operatorPrivateKey));
+        Sdk.client = Client.forTestnet();
+        Sdk.client.setOperator(AccountId.fromString(operatorAccountId), PrivateKey.fromString(operatorPrivateKey));
     }
 
     public void resetClient() {
-        client = null;
+        Sdk.client = null;
     }
 
     public Client getClient() throws InternalException {
-        if (client == null) {
+        if (Sdk.client == null) {
             throw new InternalException("Client not setup");
         }
-        return client;
+        return Sdk.client;
     }
 
     public void setClient(Client client) {

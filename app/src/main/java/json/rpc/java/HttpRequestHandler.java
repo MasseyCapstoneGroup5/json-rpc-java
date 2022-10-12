@@ -15,16 +15,22 @@ import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
 
 @SuppressWarnings("restriction")
 public class HttpRequestHandler implements HttpHandler {
+    private static final JsonRpcServer JsonRpcServer = new JsonRpcServer();
     private static final HttpRequestHandler instance = new HttpRequestHandler();
 
     public static HttpRequestHandler getInstance() {
         return instance;
+    }
+    
+    private static JsonRpcServer getRpc() {
+    	return HttpRequestHandler.JsonRpcServer;
     }
 
     public void handle(HttpExchange t) throws IOException {
@@ -49,28 +55,27 @@ public class HttpRequestHandler implements HttpHandler {
     }
 
     private static String postRequest(String body) {
-
         ArrayList<Object> services = new ArrayList<>();
         services.add(new SdkService());
         services.add(new AccountService());
         services.add(new KeyService());
 
-        JsonRpcServer rpcServer = new JsonRpcServer();
+
         JSONObject json_body = new JSONObject(body);
         String method = json_body.getString("method");
-        JSONObject params = json_body.getJSONObject("params");
         
-        if (method == "call") {
-        	if (json_body.getString("params").contains("func")) {
-        		method = json_body.getJSONObject("params").getString("func");
-        		params.remove("func");
-        	} else {
-        		method = json_body.getJSONObject("params").getString("callClass");
-        		params = json_body.getJSONObject("params").getJSONObject("methods");
-        	}
+        if (body.contains("params")) {
+            if (method == "call") {
+            	if (json_body.getString("params").contains("func")) {
+            		method = json_body.getJSONObject("params").getString("func");
+            	} else {
+            		method = json_body.getJSONObject("params").getString("callClass");
+            	}
+            }
         }
-        
+
         String call_method = method;
+        JsonRpcServer rpcServer = getRpc();
 
         String response = null;
         for (Object service : services) {

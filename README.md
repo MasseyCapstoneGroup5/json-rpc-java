@@ -24,12 +24,13 @@ Gradle build
 
     gradle build
 
-Run server with default port 8080
+Run server with default port 80
 
     gradle run
 
 Run Server with custom port
-	gradle run --args 80
+
+	gradle run --args 8080
 
 
 ## Example usage
