@@ -7,17 +7,11 @@ import json.rpc.java.services.AccountService;
 import json.rpc.java.services.KeyService;
 import json.rpc.java.services.SdkService;
 import org.apache.commons.io.IOUtils;
-import org.json.JSONObject;
-import java.util.stream.Collectors;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.stream.Stream;
 
 
 @SuppressWarnings("restriction")
@@ -60,33 +54,15 @@ public class HttpRequestHandler implements HttpHandler {
         services.add(new AccountService());
         services.add(new KeyService());
 
-
-        JSONObject json_body = new JSONObject(body);
-        String method = json_body.getString("method");
-        
-        if (body.contains("params")) {
-            if (method == "call") {
-            	if (json_body.getString("params").contains("func")) {
-            		method = json_body.getJSONObject("params").getString("func");
-            	} else {
-            		method = json_body.getJSONObject("params").getString("callClass");
-            	}
-            }
-        }
-
-        String call_method = method;
         JsonRpcServer rpcServer = getRpc();
 
         String response = null;
         for (Object service : services) {
-        	List<Method> methods = Stream.of(service.getClass().getMethods()).filter(i -> i.getName().toLowerCase().contains(call_method.toLowerCase())).collect(Collectors.toList());
-        	if (methods.size() > 0 ) {
-        		response = rpcServer.handle(body, service);
-	            if (!(response.contains("-32601") && response.contains("Method not found"))) {
-		              // Method found
-		            break;
-		        }
-        	}
+    		response = rpcServer.handle(body, service);
+            if (!(response.contains("-32601") && response.contains("Method not found"))) {
+	              // Method found
+	            break;
+	        }
         }
         return response;
     }
