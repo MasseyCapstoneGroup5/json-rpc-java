@@ -88,6 +88,7 @@ public class AccountService {
             accountInfoMap.put("balance", accountInfo.balance.getValue());
             accountInfoMap.put("key", accountInfo.key.toString());
             accountInfoMap.put("accountMemo", accountInfo.accountMemo);
+            accountInfoMap.put("autoRenewPeriod", accountInfo.autoRenewPeriod);
 
             return accountInfoMap;
         } catch (PrecheckStatusException e) {
