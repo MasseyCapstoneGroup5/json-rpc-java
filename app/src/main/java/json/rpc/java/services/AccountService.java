@@ -9,6 +9,7 @@ import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcMethod;
 import json.rpc.java.exceptions.HederaException;
 import json.rpc.java.exceptions.InternalException;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -26,12 +27,12 @@ public class AccountService {
             @JsonRpcOptional @JsonRpcParam("stakedNodeId") Long stakedNodeId,
             @JsonRpcOptional @JsonRpcParam("declineStakingReward") Boolean declineStakingReward,
             @JsonRpcOptional @JsonRpcParam("accountMemo") String accountMemo,
-            @JsonRpcOptional @JsonRpcParam("privateKey") String privateKey
+            @JsonRpcOptional @JsonRpcParam("privateKey") String privateKey,
+            @JsonRpcOptional @JsonRpcParam("autoRenewPeriod") Long autoRenewPeriod
     ) throws InternalException, HederaException {
 
         Client client = Sdk.getInstance().getClient();
         try {
-
             //Create the transaction
             AccountCreateTransaction transaction = new AccountCreateTransaction();
             if (publicKey != null) transaction.setKey(PublicKey.fromString(publicKey));
@@ -43,11 +44,13 @@ public class AccountService {
             if (stakedNodeId != null) transaction.setStakedNodeId(stakedNodeId);
             if (declineStakingReward != null) transaction.setDeclineStakingReward(declineStakingReward);
             if (accountMemo != null) transaction.setAccountMemo(accountMemo);
+            if (autoRenewPeriod != null) transaction.setAutoRenewPeriod(Duration.ofSeconds(autoRenewPeriod));
             if (privateKey != null) {
                 //Sign the transaction with the private key
                 transaction.freezeWith(client);
                 transaction = transaction.sign(PrivateKey.fromString(privateKey));
             }
+            
 
             //Submit the transaction to a Hedera network
             TransactionResponse txResponse = transaction.execute(client);
