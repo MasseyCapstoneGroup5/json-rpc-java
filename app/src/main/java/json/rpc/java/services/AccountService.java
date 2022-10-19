@@ -3,9 +3,11 @@ package json.rpc.java.services;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcOptional;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcParam;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
-import com.hedera.hashgraph.sdk.*;
-import json.rpc.java.Sdk;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcMethod;
+
+import com.hedera.hashgraph.sdk.*;
+
+import json.rpc.java.Sdk;
 import json.rpc.java.exceptions.HederaException;
 import json.rpc.java.exceptions.InternalException;
 
@@ -17,6 +19,37 @@ import java.util.concurrent.TimeoutException;
 
 @JsonRpcService
 public class AccountService {
+	@JsonRpcMethod
+	public Map<String, Object> createAccountFromAlias(
+			@JsonRpcParam("operator_id") String operator_id,
+			@JsonRpcParam("aliasAccountId") String aliasAccountId,
+			@JsonRpcParam("initialBalance") Long initialBalance
+			
+	) throws InternalException, HederaException {
+		
+		System.out.println(operator_id + "," + aliasAccountId + ", " + initialBalance);
+		Client client = Sdk.getInstance().getClient();
+		try {
+			TransactionResponse response = new TransferTransaction().addHbarTransfer(AccountId.fromString(operator_id), 
+					new Hbar(initialBalance).negated()).addHbarTransfer(AccountId.fromString(aliasAccountId.replace("\"", "")),
+							new Hbar(initialBalance)).execute(client);
+			System.out.println(response);
+			TransactionReceipt receipt = response.getReceipt(client);
+			System.out.println(receipt);
+			HashMap<String, Object> receiptMap = new HashMap<>();
+			
+	        receiptMap.put("status", receipt.status.toString());
+	        return receiptMap;
+		} catch (TimeoutException e) {
+			throw new InternalException(e.getMessage());
+		} catch (PrecheckStatusException e) {
+			throw new HederaException(e.status.toString(), e.getMessage());
+		} catch (ReceiptStatusException e) {
+			throw new HederaException(e.receipt.status.toString(), e.getMessage());
+		}
+	}
+	
+	
     @JsonRpcMethod
     public Map<String, Object> createAccount(
             @JsonRpcOptional @JsonRpcParam("publicKey") String publicKey,
